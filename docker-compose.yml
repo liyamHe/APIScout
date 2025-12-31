@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  apiscout:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: apiscout
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist logs across container restarts
+      - ./logs.json:/app/logs.json
+      # Optional: mount logs directory for backups
+      - apiscout-logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - SERVER_URL=${SERVER_URL:-http://localhost:3000}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  apiscout-logs:
+    driver: local

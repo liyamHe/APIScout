@@ -1,0 +1,27 @@
+{
+  "name": "apiscout",
+  "version": "1.0.0",
+  "description": "APIScout - Chrome Extension + Backend for collecting and visualizing API calls",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "start:docker": "docker-compose up",
+    "build:docker": "docker-compose build",
+    "stop:docker": "docker-compose down"
+  },
+  "keywords": [
+    "api",
+    "chrome-extension",
+    "monitoring",
+    "visualization"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

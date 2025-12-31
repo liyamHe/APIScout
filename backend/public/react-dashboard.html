@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APIScout Dashboard</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #0a0e27;
+            color: #e4e6eb;
+        }
+        
+        #root {
+            min-height: 100vh;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            min-height: 100vh;
+            gap: 0;
+        }
+        
+        .topbar {
+            background: #1a1f3a;
+            border-bottom: 1px solid #2d3748;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .topbar-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #00d4ff;
+        }
+        
+        .topbar-search {
+            flex: 1;
+            max-width: 500px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: #0a0e27;
+            border: 1px solid #2d3748;
+            border-radius: 4px;
+            color: #e4e6eb;
+            font-size: 14px;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+            color: #e4e6eb;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #3d4758;
+            border-color: #5a6578;
+        }
+        
+        .btn-primary {
+            background: #00d4ff;
+            color: #0a0e27;
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background: #00a8cc;
+        }
+        
+        .filters {
+            background: #1a1f3a;
+            border-bottom: 1px solid #2d3748;
+            padding: 12px 20px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+            position: sticky;
+            top: 64px;
+            z-index: 99;
+        }
+        
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #8b92a9;
+            margin-right: 8px;
+        }
+        
+        .filter-chip {
+            padding: 6px 12px;
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+            color: #e4e6eb;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        
+        .filter-chip.active {
+            background: #00d4ff;
+            color: #0a0e27;
+            border-color: #00d4ff;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .panel {
+            background: #1a1f3a;
+            border-right: 1px solid #2d3748;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        
+        .panel-inspector {
+            position: fixed;
+            right: 0;
+            top: 104px;
+            width: 360px;
+            height: calc(100vh - 104px);
+            background: #1a1f3a;
+            border-left: 1px solid #2d3748;
+            padding: 16px;
+            overflow-y: auto;
+            z-index: 50;
+        }
+        
+        .panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #8b92a9;
+            margin: 0 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2d3748;
+        }
+        
+        .cluster-tree {
+            display: grid;
+            gap: 6px;
+        }
+        
+        .cluster-node {
+            padding: 8px;
+            background: #0a0e27;
+            border: 1px solid #2d3748;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+        
+        .cluster-node:hover {
+            background: #2d3748;
+            border-color: #4a5568;
+        }
+        
+        .cluster-node span:last-child {
+            font-size: 11px;
+            color: #00d4ff;
+            font-weight: 600;
+        }
+        
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 12px;
+            padding: 16px;
+            overflow-y: auto;
+            padding-right: 380px;
+        }
+        
+        .card {
+            background: #0a0e27;
+            border: 1px solid #2d3748;
+            border-radius: 4px;
+            padding: 12px;
+            display: grid;
+            gap: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .card:hover {
+            border-color: #4a5568;
+            background: #1a1f3a;
+        }
+        
+        .card-path {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            color: #00d4ff;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        
+        .card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 11px;
+        }
+        
+        .pill {
+            padding: 4px 8px;
+            background: #2d3748;
+            border: 1px solid #4a5568;
+            border-radius: 3px;
+            color: #e4e6eb;
+            white-space: nowrap;
+        }
+        
+        .status-spectrum {
+            display: flex;
+            gap: 4px;
+            height: 20px;
+        }
+        
+        .status-bar {
+            flex: 1;
+            border-radius: 2px;
+            min-width: 0;
+        }
+        
+        .st-2xx { background: #22c55e; }
+        .st-3xx { background: #14b8a6; }
+        .st-4xx { background: #f59e0b; }
+        .st-5xx { background: #ef4444; }
+        
+        .inspector {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .inspector-section {
+            display: grid;
+            gap: 6px;
+        }
+        
+        .inspector-label {
+            font-size: 11px;
+            color: #8b92a9;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .inspector-value {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #00d4ff;
+            word-break: break-all;
+            background: #0a0e27;
+            padding: 8px;
+            border-radius: 3px;
+            border: 1px solid #2d3748;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #8b92a9;
+        }
+        
+        .footer {
+            background: #1a1f3a;
+            border-top: 1px solid #2d3748;
+            padding: 12px 20px;
+            font-size: 12px;
+            color: #8b92a9;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-container {
+            background: #1a1f3a;
+            border: 2px solid #2d3748;
+            border-radius: 8px;
+            width: 90%;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+            max-width: 1400px;
+        }
+        
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #2d3748;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #00d4ff;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #8b92a9;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .modal-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            overflow: hidden;
+        }
+        
+        .tree-detail-panel {
+            background: #1a1f3a;
+            border-left: 1px solid #2d3748;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .tree-detail-header {
+            padding-bottom: 12px;
+            border-bottom: 1px solid #2d3748;
+        }
+        
+        .tree-detail-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #00d4ff;
+            word-break: break-all;
+        }
+        
+        .tree-detail-section {
+            display: grid;
+            gap: 6px;
+        }
+        
+        .tree-detail-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #8b92a9;
+            font-weight: 600;
+        }
+        
+        .tree-detail-value {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            color: #00d4ff;
+            background: #0a0e27;
+            padding: 6px;
+            border-radius: 3px;
+            border: 1px solid #2d3748;
+            word-break: break-all;
+        }
+        
+        .tree-method-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        
+        .tree-method-chip {
+            padding: 3px 6px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef, useMemo } = React;
+        
+        // API Client
+        const api = {
+            fetchLogs: async () => {
+                const response = await fetch('/api/logs');
+                const data = await response.json();
+                return data.logs || [];
+            },
+            clearLogs: async () => {
+                const response = await fetch('/api/logs', { method: 'DELETE' });
+                const data = await response.json();
+                return data.success;
+            }
+        };
+        
+        // Utility functions
+        const getRootDomain = (hostname) => {
+            const parts = hostname.split('.');
+            if (parts.length <= 2) return hostname;
+            return parts.slice(-2).join('.');
+        };
+        
+        const getMethodColor = (method) => {
+            const colorMap = {
+                'GET': '#00FF88',
+                'POST': '#FF006E',
+                'PUT': '#FFB000',
+                'DELETE': '#FF0080',
+                'PATCH': '#00D9FF'
+            };
+            return colorMap[method] || '#00D9FF';
+        };
+        
+        // Main Dashboard Component
+        function Dashboard() {
+            const [logs, setLogs] = useState([]);
+            const [filteredLogs, setFilteredLogs] = useState([]);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedLog, setSelectedLog] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [methods, setMethods] = useState({ GET: true, POST: true, PUT: true, DELETE: true });
+            const [hideAssets, setHideAssets] = useState(false);
+            const [showTreeMap, setShowTreeMap] = useState(false);
+            const [treeMapHostname, setTreeMapHostname] = useState('');
+            const [expandedNodes, setExpandedNodes] = useState({});
+            
+            const loadLogs = useCallback(async () => {
+                setLoading(true);
+                try {
+                    const data = await api.fetchLogs();
+                    setLogs(data);
+                } catch (error) {
+                    console.error('Failed to load logs:', error);
+                }
+                setLoading(false);
+            }, []);
+            
+            const clearLogs = useCallback(async () => {
+                if (!confirm('Are you sure you want to delete all logs? This action cannot be undone.')) {
+                    return;
+                }
+                setLoading(true);
+                try {
+                    await api.clearLogs();
+                    setLogs([]);
+                    setFilteredLogs([]);
+                    setSelectedLog(null);
+                } catch (error) {
+                    console.error('Failed to clear logs:', error);
+                    alert('Failed to clear logs. Please try again.');
+                }
+                setLoading(false);
+            }, []);
+            
+            useEffect(() => {
+                loadLogs();
+                const interval = setInterval(loadLogs, 10000); // Reduced from 5s to 10s
+                return () => clearInterval(interval);
+            }, [loadLogs]);
+            
+            useEffect(() => {
+                let filtered = logs;
+                
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    filtered = filtered.filter(log => 
+                        (log.hostname || '').toLowerCase().includes(q) ||
+                        (log.normalizedPath || '').toLowerCase().includes(q)
+                    );
+                }
+                
+                const enabledMethods = Object.keys(methods).filter(m => methods[m]);
+                if (enabledMethods.length < 4) {
+                    filtered = filtered.filter(log => enabledMethods.includes(log.method));
+                }
+                
+                if (hideAssets) {
+                    const assetExts = ['.js', '.css', '.png', '.jpg', '.gif', '.svg', '.woff', '.woff2', '.ttf'];
+                    filtered = filtered.filter(log => 
+                        !assetExts.some(ext => (log.normalizedPath || '').toLowerCase().endsWith(ext))
+                    );
+                }
+                
+                setFilteredLogs(filtered);
+                if (filtered.length > 0 && !selectedLog) {
+                    setSelectedLog(filtered[0]);
+                }
+            }, [logs, searchQuery, methods, hideAssets, selectedLog]);
+            
+            const clustersByHostname = useMemo(() => {
+                const clusters = {};
+                filteredLogs.forEach(log => {
+                    if (!clusters[log.hostname]) {
+                        clusters[log.hostname] = [];
+                    }
+                    clusters[log.hostname].push(log);
+                });
+                
+                // Sort hostnames alphabetically and endpoints by path
+                const sorted = {};
+                Object.keys(clusters).sort().forEach(host => {
+                    sorted[host] = clusters[host].sort((a, b) => 
+                        (a.normalizedPath || '').localeCompare(b.normalizedPath || '')
+                    );
+                });
+                return sorted;
+            }, [filteredLogs]);
+            
+            const hierarchyTree = useMemo(() => {
+                const tree = {};
+                Object.entries(clustersByHostname).forEach(([hostname, logs]) => {
+                    tree[hostname] = {};
+                    logs.forEach(log => {
+                        const path = (log.normalizedPath || '/').split('/').filter(Boolean);
+                        let current = tree[hostname];
+                        path.forEach((segment, idx) => {
+                            if (!current[segment]) {
+                                current[segment] = { _logs: [], _children: {} };
+                            }
+                            if (idx === path.length - 1) {
+                                current[segment]._logs.push(log);
+                            }
+                            current = current[segment]._children;
+                        });
+                    });
+                });
+                return tree;
+            }, [clustersByHostname]);
+            
+            const TreeNode = ({ nodeId, node, depth, logs }) => {
+                const isExpanded = expandedNodes[nodeId];
+                const hasChildren = Object.keys(node._children || {}).length > 0;
+                const hasLogs = (node._logs || []).length > 0;
+                
+                // Get the first log for this node to show in inspector when clicked
+                const firstLog = hasLogs ? node._logs[0] : null;
+                
+                return (
+                    <div style={{ display: 'block' }}>
+                        <div
+                            onClick={() => {
+                                setExpandedNodes(prev => ({
+                                    ...prev,
+                                    [nodeId]: !isExpanded
+                                }));
+                                if (firstLog) {
+                                    setSelectedLog(firstLog);
+                                }
+                            }}
+                            style={{
+                                paddingLeft: `${depth * 16}px`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '6px 8px',
+                                background: depth === 0 ? '#2d3748' : '#0a0e27',
+                                margin: '2px 4px',
+                                borderRadius: '3px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                color: depth === 0 ? '#00FF88' : '#00d4ff',
+                                fontWeight: depth === 0 ? 'bold' : 'normal',
+                                transition: 'all 0.2s',
+                                borderLeft: selectedLog && firstLog && selectedLog === firstLog ? '3px solid #00d4ff' : '3px solid transparent'
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = depth === 0 ? '#3d4858' : '#1a1f3a'}
+                            onMouseLeave={(e) => e.target.style.background = depth === 0 ? '#2d3748' : '#0a0e27'}
+                        >
+                            {(hasChildren || hasLogs) && (
+                                <span style={{ marginRight: '6px', minWidth: '12px', textAlign: 'center' }}>
+                                    {isExpanded ? '▼' : '▶'}
+                                </span>
+                            )}
+                            {!hasChildren && !hasLogs && <span style={{ minWidth: '12px' }} />}
+                            <span style={{ flex: 1 }}>{nodeId.split('/').pop()}</span>
+                            {hasLogs && <span style={{ fontSize: '10px', color: '#FFB000' }}>×{node._logs.length}</span>}
+                        </div>
+                        
+                        {isExpanded && (
+                            <div style={{ display: 'block' }}>
+                                {Object.entries(node._children || {}).map(([childName, childNode]) => (
+                                    <TreeNode
+                                        key={`${nodeId}/${childName}`}
+                                        nodeId={`${nodeId}/${childName}`}
+                                        node={childNode}
+                                        depth={depth + 1}
+                                        logs={logs}
+                                    />
+                                ))}
+                                
+                                {node._logs && node._logs.map((log, idx) => (
+                                    <div
+                                        key={idx}
+                                        onClick={() => setSelectedLog(log)}
+                                        style={{
+                                            paddingLeft: `${(depth + 1) * 16}px`,
+                                            padding: '6px 8px',
+                                            margin: '2px 4px',
+                                            background: selectedLog === log ? '#00d4ff' : '#0a0e27',
+                                            color: selectedLog === log ? '#0a0e27' : '#00d9ff',
+                                            borderRadius: '3px',
+                                            cursor: 'pointer',
+                                            fontSize: '11px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (selectedLog !== log) {
+                                                e.target.style.background = '#1a1f3a';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (selectedLog !== log) {
+                                                e.target.style.background = '#0a0e27';
+                                            }
+                                        }}
+                                    >
+                                        <span style={{ marginRight: '6px' }}>
+                                            <span 
+                                                style={{
+                                                    display: 'inline-block',
+                                                    width: '6px',
+                                                    height: '6px',
+                                                    borderRadius: '50%',
+                                                    background: getMethodColor(log.method),
+                                                    boxShadow: `0 0 4px ${getMethodColor(log.method)}`
+                                                }}
+                                            />
+                                        </span>
+                                        <span style={{ flex: 1, fontSize: '10px' }}>{log.method}</span>
+                                        {log.discoveryCount && log.discoveryCount > 1 && (
+                                            <span style={{ fontSize: '9px', color: '#FFB000' }}>×{log.discoveryCount}</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+            
+            const exportLogs = () => {
+                const dataStr = JSON.stringify(filteredLogs, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `apiscout-logs-${new Date().toISOString().slice(0, 10)}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            };
+            
+            return (
+                <div className="dashboard">
+                    <div className="topbar">
+                        <div className="topbar-title">APIScout</div>
+                        <div className="topbar-search">
+                            <input 
+                                type="text" 
+                                className="search-input" 
+                                placeholder="Search hostname or path..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <button className="btn btn-primary" onClick={loadLogs}>
+                            REFRESH
+                        </button>
+                        <button className="btn btn-danger" onClick={clearLogs} style={{ marginLeft: '8px', background: '#FF006E' }}>
+                            CLEAR LOGS
+                        </button>
+                    </div>
+                    
+                    <div className="filters">
+                        <span className="filter-label">Methods:</span>
+                        {['GET', 'POST', 'PUT', 'DELETE'].map(m => (
+                            <div 
+                                key={m}
+                                className={`filter-chip ${methods[m] ? 'active' : ''}`}
+                                onClick={() => setMethods(prev => ({ ...prev, [m]: !prev[m] }))}
+                            >
+                                {m}
+                            </div>
+                        ))}
+                        
+                        <span className="filter-label" style={{ marginLeft: 'auto' }}>Options:</span>
+                        <div 
+                            className={`filter-chip ${hideAssets ? 'active' : ''}`}
+                            onClick={() => setHideAssets(!hideAssets)}
+                        >
+                            Hide Assets
+                        </div>
+                        <button 
+                            className="btn btn-primary"
+                            onClick={exportLogs}
+                            style={{ padding: '6px 12px', fontSize: '11px', marginLeft: '12px' }}
+                        >
+                            EXPORT
+                        </button>
+                    </div>
+                    
+                    <div className="main-grid">
+                        <div className="panel">
+                            <h3 className="panel-title">API Hierarchy</h3>
+                            {loading ? (
+                                <div className="loading">Loading...</div>
+                            ) : (
+                                <div className="cluster-tree">
+                                    {Object.entries(hierarchyTree).map(([hostname, tree]) => (
+                                        <div key={hostname}>
+                                            <TreeNode
+                                                nodeId={hostname}
+                                                node={{ _children: tree, _logs: [] }}
+                                                depth={0}
+                                                logs={filteredLogs}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="cards-grid">
+                            {filteredLogs.map((log, idx) => {
+                                const protocol = log.hostname.includes('localhost') || log.hostname.includes('127.0.0.1') ? 'http://' : 'https://';
+                                const fullUrl = `${protocol}${log.hostname}${log.normalizedPath || '/'}`;
+                                return (
+                                <div 
+                                    key={idx}
+                                    className="card"
+                                    onClick={() => setSelectedLog(log)}
+                                    style={{
+                                        borderColor: selectedLog === log ? '#00d4ff' : '#2d3748'
+                                    }}
+                                >
+                                    <div className="card-path">{fullUrl}</div>
+                                    <div className="card-meta">
+                                        <span className="pill">{log.method}</span>
+                                        <span className="pill">×{log.discoveryCount || 1}</span>
+                                    </div>
+                                    <div className="status-spectrum">
+                                        {(log.statusCodes || []).map((code, i) => {
+                                            const codeStr = String(code);
+                                            const classMap = {
+                                                '2': 'st-2xx',
+                                                '3': 'st-3xx',
+                                                '4': 'st-4xx',
+                                                '5': 'st-5xx'
+                                            };
+                                            return (
+                                                <div 
+                                                    key={i}
+                                                    className={`status-bar ${classMap[codeStr[0]] || ''}`}
+                                                    title={`HTTP ${code}`}
+                                                    style={{ flex: 1 }}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                );
+                            })}
+                        </div>
+                        
+                        <div className="panel-inspector">
+                            <h3 className="panel-title">Inspector</h3>
+                            {selectedLog ? (
+                                <div className="inspector">
+                                    <button 
+                                        className="btn btn-primary"
+                                        onClick={() => {
+                                            setShowTreeMap(true);
+                                            setTreeMapHostname(selectedLog.hostname);
+                                        }}
+                                        style={{ width: '100%', marginBottom: '8px' }}
+                                    >
+                                        TREE MAP
+                                    </button>
+                                    <div className="inspector-section">
+                                        <div className="inspector-label">Hostname</div>
+                                        <div className="inspector-value">{selectedLog.hostname}</div>
+                                    </div>
+                                    <div className="inspector-section">
+                                        <div className="inspector-label">Method</div>
+                                        <div className="inspector-value">{selectedLog.method}</div>
+                                    </div>
+                                    <div className="inspector-section">
+                                        <div className="inspector-label">Path</div>
+                                        <div className="inspector-value">{selectedLog.normalizedPath}</div>
+                                    </div>
+                                    <div className="inspector-section">
+                                        <div className="inspector-label">Fingerprint</div>
+                                        <div className="inspector-value">{selectedLog.fingerprint?.slice(0, 16)}...</div>
+                                    </div>
+                                    <div className="inspector-section">
+                                        <div className="inspector-label">Discovery Count</div>
+                                        <div className="inspector-value">{selectedLog.discoveryCount || 1}</div>
+                                    </div>
+                                    <div className="inspector-section">
+                                        <div className="inspector-label">Status Codes</div>
+                                        <div className="inspector-value">{(selectedLog.statusCodes || []).sort((a,b) => a-b).join(', ')}</div>
+                                    </div>
+                                    <div className="inspector-section">
+                                        <div className="inspector-label">Query Keys</div>
+                                        <div className="inspector-value">{(selectedLog.queryKeys || []).join(', ') || '—'}</div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="loading">Select an endpoint</div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {showTreeMap && (
+                        <TreeMapModal 
+                            hostname={treeMapHostname}
+                            logs={logs}
+                            onClose={() => setShowTreeMap(false)}
+                        />
+                    )}
+                    
+                    <div className="footer">
+                        Total: {filteredLogs.length} endpoints · Dedup ratio: {(logs.reduce((s, l) => s + (l.discoveryCount || 1), 0) / (logs.length || 1)).toFixed(2)}
+                    </div>
+                </div>
+            );
+        }
+        
+        // Vertical Gravity Tree Map Modal with Stable State Reconciliation
+        function TreeMapModal({ hostname, logs, onClose }) {
+            const svgRef = useRef(null);
+            const simulationRef = useRef(null);
+            const [selectedNode, setSelectedNode] = useState(null);
+            const lastGraphDataRef = useRef(null);
+            const nodePositionsRef = useRef(new Map());
+            const refreshTimeoutRef = useRef(null);
+            
+            const hostLogs = useMemo(() => logs.filter(l => l.hostname === hostname), [logs, hostname]);
+            
+            const graphData = useMemo(() => {
+                const nodes = [];
+                const links = [];
+                const nodeMap = new Map();
+                
+                // Determine protocol (assume https for most APIs, fallback to http for localhost)
+                const protocol = hostname.includes('localhost') || hostname.includes('127.0.0.1') ? 'http://' : 'https://';
+                
+                nodes.push({
+                    id: 'root',
+                    label: `${protocol}${hostname}`,
+                    count: hostLogs.length,
+                    depth: 0,
+                    methods: [...new Set(hostLogs.map(l => l.method))],
+                    isRoot: true
+                });
+                nodeMap.set('root', nodes[0]);
+                
+                hostLogs.forEach(log => {
+                    const path = log.normalizedPath || '/';
+                    const segments = path.split('/').filter(Boolean);
+                    let currentId = 'root';
+                    
+                    segments.forEach((segment, depth) => {
+                        const parentId = currentId;
+                        currentId = `${parentId}/${segment}`;
+                        
+                        let node = nodeMap.get(currentId);
+                        if (!node) {
+                            node = {
+                                id: currentId,
+                                label: `${protocol}${hostname}${currentId.replace('root', '')}`,
+                                count: 0,
+                                depth: depth + 1,
+                                methods: new Set(),
+                                statuses: new Set()
+                            };
+                            nodes.push(node);
+                            nodeMap.set(currentId, node);
+                            links.push({ source: parentId, target: currentId });
+                        }
+                        
+                        node.count++;
+                        node.methods.add(log.method);
+                        if (log.statusCodes) {
+                            log.statusCodes.forEach(s => node.statuses.add(s));
+                        }
+                    });
+                });
+                
+                nodes.forEach(n => {
+                    if (n.methods instanceof Set) n.methods = Array.from(n.methods);
+                    if (n.statuses instanceof Set) n.statuses = Array.from(n.statuses);
+                });
+                
+                return { nodes, links };
+            }, [hostLogs, hostname]);
+            
+            useEffect(() => {
+                // Debounce rapid refreshes
+                if (refreshTimeoutRef.current) {
+                    clearTimeout(refreshTimeoutRef.current);
+                }
+                
+                refreshTimeoutRef.current = setTimeout(() => {
+                    if (!svgRef.current || graphData.nodes.length === 0) return;
+                    
+                    const width = 1200;
+                    const height = 800;
+                    const depthSpacing = 120;
+                    
+                    const isFirstRender = !simulationRef.current;
+                    
+                    if (isFirstRender) {
+                        // First render - set up from scratch
+                        d3.select(svgRef.current).selectAll('*').remove();
+                        
+                        const svg = d3.select(svgRef.current)
+                            .attr('width', width)
+                            .attr('height', height)
+                            .attr('viewBox', [0, 0, width, height]);
+                        
+                        const g = svg.append('g');
+                        
+                        const zoom = d3.zoom()
+                            .scaleExtent([0.1, 4])
+                            .on('zoom', (event) => g.attr('transform', event.transform));
+                        
+                        svg.call(zoom);
+                        
+                        // Store g for later updates
+                        svg.attr('data-g', 'true');
+                    }
+                    
+                    // Reconcile nodes: existing keep positions, new ones spawn at parent
+                    const lastNodeMap = new Map();
+                    if (lastGraphDataRef.current) {
+                        lastGraphDataRef.current.nodes.forEach(n => {
+                            lastNodeMap.set(n.id, n);
+                        });
+                    }
+                    
+                    const getTargetY = (d) => 80 + d.depth * depthSpacing;
+                    const nodeMapById = new Map();
+                    
+                    // Preserve positions for existing nodes, initialize new ones
+                    graphData.nodes.forEach(newNode => {
+                        const existingNode = lastNodeMap.get(newNode.id);
+                        if (existingNode && existingNode.x !== undefined) {
+                            // Existing node: preserve position and velocity
+                            newNode.x = existingNode.x;
+                            newNode.y = existingNode.y;
+                            newNode.vx = existingNode.vx || 0;
+                            newNode.vy = existingNode.vy || 0;
+                            newNode.fx = existingNode.fx; // Preserve fixed position if user was dragging
+                            newNode.fy = existingNode.fy;
+                            newNode.pinned = existingNode.pinned;
+                        } else {
+                            // New node: spawn at parent position
+                            const parentId = newNode.id.substring(0, newNode.id.lastIndexOf('/'));
+                            const parentNode = graphData.nodes.find(n => n.id === parentId);
+                            if (parentNode && parentNode.x !== undefined) {
+                                newNode.x = parentNode.x + (Math.random() - 0.5) * 20;
+                                newNode.y = parentNode.y + (Math.random() - 0.5) * 20;
+                                newNode.vx = 0;
+                                newNode.vy = 0;
+                            } else {
+                                newNode.x = width / 2 + (Math.random() - 0.5) * 40;
+                                newNode.y = getTargetY(newNode) + (Math.random() - 0.5) * 40;
+                                newNode.vx = 0;
+                                newNode.vy = 0;
+                            }
+                        }
+                        nodeMapById.set(newNode.id, newNode);
+                    });
+                    
+                    // Handle deleted nodes: fade them out
+                    const deletedNodes = [];
+                    if (lastGraphDataRef.current) {
+                        lastGraphDataRef.current.nodes.forEach(oldNode => {
+                            if (!nodeMapById.has(oldNode.id)) {
+                                deletedNodes.push(oldNode.id);
+                            }
+                        });
+                    }
+                    
+                    if (isFirstRender) {
+                        // Create simulation with strict geometric layout
+                        const minNodeSpacing = 100; // Minimum gap between sibling nodes
+                        
+                        const simulation = d3.forceSimulation(graphData.nodes)
+                            .force('link', d3.forceLink(graphData.links)
+                                .id(d => d.id)
+                                .distance(d => 80 + d.target.depth * 25)
+                                .strength(0.7))
+                            .force('gravity', d3.forceY()
+                                .y(d => getTargetY(d))
+                                .strength(d => 0.3 + d.depth * 0.08))
+                            .force('centerX', d3.forceX(width / 2)
+                                .strength(d => d.isRoot ? 1.2 : 0.2))
+                            .force('charge', d3.forceManyBody()
+                                .strength(d => -400 - d.depth * 120)
+                                .distanceMax(350))
+                            .force('collision', d3.forceCollide()
+                                .radius(d => {
+                                    const dims = getNodeDimensions(d);
+                                    return Math.max(dims.width, dims.height) / 2 + minNodeSpacing / 2;
+                                })
+                                .strength(1.0));
+                        
+                        simulationRef.current = simulation;
+                        
+                        const svg = d3.select(svgRef.current);
+                        const g = svg.select('g');
+                        
+                        // Depth guide lines
+                        const maxDepth = Math.max(...graphData.nodes.map(n => n.depth));
+                        for (let i = 1; i <= maxDepth; i++) {
+                            g.append('line')
+                                .attr('class', 'depth-guide')
+                                .attr('x1', 0)
+                                .attr('x2', width)
+                                .attr('y1', 80 + i * depthSpacing)
+                                .attr('y2', 80 + i * depthSpacing)
+                                .attr('stroke', '#2d3748')
+                                .attr('stroke-dasharray', '5,5')
+                                .attr('stroke-opacity', 0.3)
+                                .attr('pointer-events', 'none');
+                        }
+                        
+                        // Links container
+                        g.append('g').attr('class', 'links');
+                        // Nodes container
+                        g.append('g').attr('class', 'nodes');
+                        
+                        // Initial link rendering
+                        const linkInit = g.select('.links')
+                            .selectAll('path')
+                            .data(graphData.links, d => `${d.source.id}-${d.target.id}`)
+                            .join('path')
+                            .attr('fill', 'none')
+                            .attr('stroke', '#00D9FF')
+                            .attr('stroke-opacity', 0.5)
+                            .attr('stroke-width', 2);
+                        
+                        // Initial node rendering with rectangular shapes
+                        const nodeInit = g.select('.nodes')
+                            .selectAll('g')
+                            .data(graphData.nodes, d => d.id)
+                            .join('g')
+                            .style('cursor', 'pointer')
+                            .call(d3.drag()
+                                .on('start', (event, d) => {
+                                    if (!event.active) simulation.alphaTarget(0.5).restart();
+                                    d.fx = d.x;
+                                    d.fy = d.y;
+                                })
+                                .on('drag', (event, d) => {
+                                    d.fx = event.x;
+                                    d.fy = event.y;
+                                })
+                                .on('end', (event, d) => {
+                                    if (!event.active) simulation.alphaTarget(0);
+                                    if (!d.pinned) {
+                                        d.fx = null;
+                                        d.fy = null;
+                                    }
+                                }))
+                            .on('click', (event, d) => {
+                                event.stopPropagation();
+                                setSelectedNode(d);
+                            })
+                            .on('dblclick', (event, d) => {
+                                event.stopPropagation();
+                                d.pinned = !d.pinned;
+                                if (d.pinned) {
+                                    d.fx = d.x;
+                                    d.fy = d.y;
+                                    d3.select(event.currentTarget).select('rect')
+                                        .attr('stroke', '#39FF14')
+                                        .attr('stroke-width', 3.5);
+                                } else {
+                                    d.fx = null;
+                                    d.fy = null;
+                                    d3.select(event.currentTarget).select('rect')
+                                        .attr('stroke', d.isRoot ? '#FF10F0' : '#00D9FF')
+                                        .attr('stroke-width', 2.5);
+                                }
+                            });
+                        
+                        // Add rectangles
+                        nodeInit.append('rect')
+                            .attr('width', d => getNodeDimensions(d).width)
+                            .attr('height', d => getNodeDimensions(d).height)
+                            .attr('x', d => -getNodeDimensions(d).width / 2)
+                            .attr('y', d => -getNodeDimensions(d).height / 2)
+                            .attr('rx', 4)
+                            .attr('fill', d => d.isRoot ? '#FF006E' : '#1a1f3a')
+                            .attr('stroke', d => d.isRoot ? '#FF10F0' : '#00D9FF')
+                            .attr('stroke-width', 2.5)
+                            .style('filter', 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))');
+                        
+                        // Add text labels inside nodes
+                        nodeInit.append('text')
+                            .attr('dy', '0.32em')
+                            .attr('text-anchor', 'middle')
+                            .attr('font-size', '10px')
+                            .attr('font-weight', 'bold')
+                            .attr('fill', d => d.isRoot ? '#FFB000' : '#00FF88')
+                            .attr('pointer-events', 'none')
+                            .style('user-select', 'none')
+                            .text(d => d.label);
+                        
+                        // Add method indicator squares
+                        nodeInit.each(function(d) {
+                            if (d.methods && d.methods.length > 0) {
+                                const methodGroup = d3.select(this).append('g').attr('class', 'method-indicators');
+                                const dims = getNodeDimensions(d);
+                                const methodSize = 5;
+                                const padding = 3;
+                                const startX = dims.width / 2 - methodSize - padding;
+                                const startY = dims.height / 2 - methodSize - padding;
+                                
+                                d.methods.slice(0, 2).forEach((method, i) => {
+                                    methodGroup.append('rect')
+                                        .attr('x', startX - i * (methodSize + padding))
+                                        .attr('y', startY)
+                                        .attr('width', methodSize)
+                                        .attr('height', methodSize)
+                                        .attr('fill', getMethodColor(method))
+                                        .attr('rx', 1)
+                                        .style('filter', `drop-shadow(0 0 4px ${getMethodColor(method)})`);
+                                });
+                            }
+                        });
+                        
+                        simulation.on('tick', () => {
+                            // Orthogonal routing
+                            linkInit.attr('d', orthogonalPath);
+                            
+                            // Update node positions
+                            const nodes = g.select('.nodes').selectAll('g');
+                            nodes.attr('transform', d => `translate(${d.x},${d.y})`);
+                            
+                            // Stop simulation after it settles to save CPU/memory
+                            if (simulation.alpha() < 0.01) {
+                                simulation.stop();
+                            }
+                        });
+                        
+                        svg.on('click', () => setSelectedNode(null));
+                    } else {
+                        // Reconciliation update: modify existing simulation
+                        const simulation = simulationRef.current;
+                        const svg = d3.select(svgRef.current);
+                        const g = svg.select('g');
+                        
+                        // Update links with orthogonal routing
+                        const link = g.select('.links')
+                            .selectAll('path')
+                            .data(graphData.links, d => `${d.source.id}-${d.target.id}`)
+                            .join(
+                                enter => enter.append('path')
+                                    .attr('fill', 'none')
+                                    .attr('stroke', '#00D9FF')
+                                    .attr('stroke-opacity', 0.5)
+                                    .attr('stroke-width', 2),
+                                update => update,
+                                exit => exit.remove()
+                            );
+                        
+                        // Update nodes with rectangular shape
+                        const nodeSelection = g.select('.nodes')
+                            .selectAll('g')
+                            .data(graphData.nodes, d => d.id);
+                        
+                        // Remove deleted nodes with fade
+                        nodeSelection.exit()
+                            .transition()
+                            .duration(300)
+                            .style('opacity', 0)
+                            .remove();
+                        
+                        // Update existing nodes
+                        nodeSelection.each(function(d) {
+                            const existing = d3.select(this);
+                            const dims = getNodeDimensions(d);
+                            
+                            // Update rectangle
+                            existing.select('rect')
+                                .attr('width', dims.width)
+                                .attr('height', dims.height)
+                                .attr('x', -dims.width / 2)
+                                .attr('y', -dims.height / 2)
+                                .attr('fill', d.isRoot ? '#FF006E' : '#1a1f3a')
+                                .attr('stroke', d.isRoot ? '#FF10F0' : '#00D9FF');
+                            
+                            // Update text
+                            existing.select('text').text(d => d.label);
+                        });
+                        
+                        // Add new nodes
+                        const nodeEnter = nodeSelection.enter()
+                            .append('g')
+                            .style('opacity', 0)
+                            .style('cursor', 'pointer')
+                            .call(d3.drag()
+                                .on('start', (event, d) => {
+                                    if (!event.active) simulation.alphaTarget(0.5).restart();
+                                    d.fx = d.x;
+                                    d.fy = d.y;
+                                })
+                                .on('drag', (event, d) => {
+                                    d.fx = event.x;
+                                    d.fy = event.y;
+                                })
+                                .on('end', (event, d) => {
+                                    if (!event.active) simulation.alphaTarget(0);
+                                    if (!d.pinned) {
+                                        d.fx = null;
+                                        d.fy = null;
+                                    }
+                                }))
+                            .on('click', (event, d) => {
+                                event.stopPropagation();
+                                setSelectedNode(d);
+                            })
+                            .on('dblclick', (event, d) => {
+                                event.stopPropagation();
+                                d.pinned = !d.pinned;
+                                if (d.pinned) {
+                                    d.fx = d.x;
+                                    d.fy = d.y;
+                                    d3.select(event.currentTarget).select('rect')
+                                        .attr('stroke', '#39FF14')
+                                        .attr('stroke-width', 3.5);
+                                } else {
+                                    d.fx = null;
+                                    d.fy = null;
+                                    d3.select(event.currentTarget).select('rect')
+                                        .attr('stroke', d.isRoot ? '#FF10F0' : '#00D9FF')
+                                        .attr('stroke-width', 2.5);
+                                }
+                            });
+                        
+                        // Add rectangles for new nodes
+                        nodeEnter.append('rect')
+                            .attr('width', d => getNodeDimensions(d).width)
+                            .attr('height', d => getNodeDimensions(d).height)
+                            .attr('x', d => -getNodeDimensions(d).width / 2)
+                            .attr('y', d => -getNodeDimensions(d).height / 2)
+                            .attr('rx', 4)
+                            .attr('fill', d => d.isRoot ? '#FF006E' : '#1a1f3a')
+                            .attr('stroke', d => d.isRoot ? '#FF10F0' : '#00D9FF')
+                            .attr('stroke-width', 2.5)
+                            .style('filter', 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))');
+                        
+                        // Add labels inside rectangles
+                        nodeEnter.append('text')
+                            .attr('dy', '0.32em')
+                            .attr('text-anchor', 'middle')
+                            .attr('font-size', '10px')
+                            .attr('font-weight', 'bold')
+                            .attr('fill', d => d.isRoot ? '#FFB000' : '#00FF88')
+                            .attr('pointer-events', 'none')
+                            .style('user-select', 'none')
+                            .text(d => d.label);
+                        
+                        // Add method indicator squares for new nodes
+                        nodeEnter.each(function(d) {
+                            if (d.methods && d.methods.length > 0) {
+                                const methodGroup = d3.select(this).append('g').attr('class', 'method-indicators');
+                                const dims = getNodeDimensions(d);
+                                const methodSize = 5;
+                                const padding = 3;
+                                const startX = dims.width / 2 - methodSize - padding;
+                                const startY = dims.height / 2 - methodSize - padding;
+                                
+                                d.methods.slice(0, 2).forEach((method, i) => {
+                                    methodGroup.append('rect')
+                                        .attr('x', startX - i * (methodSize + padding))
+                                        .attr('y', startY)
+                                        .attr('width', methodSize)
+                                        .attr('height', methodSize)
+                                        .attr('fill', getMethodColor(method))
+                                        .attr('rx', 1)
+                                        .style('filter', `drop-shadow(0 0 4px ${getMethodColor(method)})`);
+                                });
+                            }
+                        });
+                        
+                        // Fade in new nodes
+                        nodeEnter.transition().duration(300).style('opacity', 1);
+                        
+                        // Warm re-heat instead of full restart
+                        simulation.nodes(graphData.nodes);
+                        simulation.force('link').links(graphData.links);
+                        simulation.alpha(0.3).restart();
+                        
+                        // Update tick handler to use current links
+                        simulation.on('tick', () => {
+                            // Update all links with orthogonal routing
+                            g.select('.links').selectAll('path').attr('d', orthogonalPath);
+                            
+                            // Update node positions
+                            g.select('.nodes').selectAll('g').attr('transform', d => `translate(${d.x},${d.y})`);
+                        });
+                        
+                        // Auto-stop after settling to save resources
+                        const stopTimer = setTimeout(() => {
+                            if (simulation.alpha() < 0.05) {
+                                simulation.stop();
+                            }
+                        }, 5000);
+                    }
+                    
+                    lastGraphDataRef.current = graphData;
+                }, 500); // Debounce 500ms
+                
+                return () => {
+                    if (refreshTimeoutRef.current) {
+                        clearTimeout(refreshTimeoutRef.current);
+                    }
+                };
+            }, [graphData]);
+            
+            // Cleanup simulation on unmount
+            useEffect(() => {
+                return () => {
+                    if (simulationRef.current) {
+                        simulationRef.current.stop();
+                        simulationRef.current = null;
+                    }
+                    if (svgRef.current) {
+                        const svg = d3.select(svgRef.current);
+                        svg.selectAll('*').remove();
+                        svg.on('.zoom', null);
+                        svg.on('click', null);
+                    }
+                };
+            }, []);
+            
+        // Orthogonal (Manhattan) path generator for links
+        const orthogonalPath = (d) => {
+            const x0 = d.source.x || 0;
+            const y0 = d.source.y || 0;
+            const x1 = d.target.x || 0;
+            const y1 = d.target.y || 0;
+            
+            // Simple Manhattan routing: go vertical first, then horizontal
+            const midY = (y0 + y1) / 2;
+            return `M${x0},${y0}L${x0},${midY}L${x1},${midY}L${x1},${y1}`;
+        };
+        
+        // Calculate text-based node dimensions
+        const getNodeDimensions = (d) => {
+            const padding = 12;
+            const textLength = (d.label || '').length;
+            const width = Math.max(120, textLength * 6 + padding * 2);
+            const height = 50;
+            return { width, height };
+        };
+        
+        const reheatSimulation = () => {
+            if (simulationRef.current) {
+                simulationRef.current.alpha(1).restart();
+            }
+        };
+        
+        const resetView = () => {
+            if (svgRef.current) {
+                const svg = d3.select(svgRef.current);
+                const zoom = d3.zoom()
+                    .scaleExtent([0.1, 4])
+                    .on('zoom', (event) => {
+                        svg.select('g').attr('transform', event.transform);
+                    });
+                
+                // Reset zoom to identity
+                svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+            }
+        };
+        
+        const unpinAll = () => {
+            if (lastGraphDataRef.current) {
+                lastGraphDataRef.current.nodes.forEach(n => {
+                    n.pinned = false;
+                    n.fx = null;
+                    n.fy = null;
+                });
+            }
+            if (simulationRef.current) {
+                simulationRef.current.alpha(1).restart();
+            }
+        };
+        
+        return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header" style={{ background: 'linear-gradient(90deg, #0f1527 0%, #1a0033 100%)', borderBottomColor: '#FF006E' }}>
+                            <div className="modal-title" style={{ color: '#39FF14' }}>
+                                PHYSICS API MAP / {hostname}
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <button 
+                                    className="btn"
+                                    onClick={resetView}
+                                    style={{ background: '#FF006E', color: '#0a0e27', fontSize: '12px', padding: '6px 12px', border: 'none', fontWeight: 'bold' }}
+                                >
+                                    RESET
+                                </button>
+                                <button 
+                                    className="btn"
+                                    onClick={unpinAll}
+                                    style={{ background: '#FFB000', color: '#0a0e27', fontSize: '12px', padding: '6px 12px', border: 'none', fontWeight: 'bold' }}
+                                >
+                                    UNPIN ALL
+                                </button>
+                                <button className="modal-close" onClick={onClose} style={{ color: '#FF006E', fontSize: '28px' }}>×</button>
+                            </div>
+                        </div>
+                        
+                        <div className="modal-content">
+                            <div style={{ flex: 1, background: 'linear-gradient(135deg, #0a0e27 0%, #1a0033 100%)', overflow: 'hidden', position: 'relative' }}>
+                                <svg ref={svgRef} style={{ width: '100%', height: '100%', display: 'block' }}></svg>
+                                <div style={{ position: 'absolute', bottom: '16px', left: '16px', background: 'rgba(26,31,58,0.9)', padding: '10px 14px', borderRadius: '6px', border: '1px solid #2d3748', fontSize: '10px', lineHeight: '1.5', color: '#00D9FF' }}>
+                                    <div><strong style={{ color: '#39FF14' }}>DRAG</strong> nodes to move</div>
+                                    <div><strong style={{ color: '#39FF14' }}>DOUBLE-CLICK</strong> to pin/unpin</div>
+                                    <div><strong style={{ color: '#39FF14' }}>SCROLL</strong> to zoom</div>
+                                </div>
+                            </div>
+                            
+                            <div className="tree-detail-panel" style={{ background: '#0f1527', borderLeft: '2px solid #FF006E' }}>
+                                {selectedNode ? (
+                                    <>
+                                        <div className="tree-detail-header" style={{ borderBottomColor: '#FF006E' }}>
+                                            <div className="tree-detail-title" style={{ color: '#39FF14' }}>
+                                                {selectedNode.label}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="tree-detail-section">
+                                            <div className="tree-detail-label">OCCURRENCES</div>
+                                            <div className="tree-detail-value" style={{ color: '#FFB000' }}>
+                                                {selectedNode.count} times
+                                            </div>
+                                        </div>
+
+                                        <div className="tree-detail-section">
+                                            <div className="tree-detail-label">DEPTH</div>
+                                            <div className="tree-detail-value" style={{ color: '#00D9FF' }}>
+                                                Level {selectedNode.depth}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="tree-detail-section">
+                                            <div className="tree-detail-label">METHODS</div>
+                                            <div className="tree-method-chips">
+                                                {selectedNode.methods && selectedNode.methods.map(m => (
+                                                    <div 
+                                                        key={m} 
+                                                        className="tree-method-chip"
+                                                        style={{
+                                                            background: getMethodColor(m),
+                                                            color: '#0a0e27',
+                                                            padding: '5px 10px',
+                                                            borderRadius: '4px',
+                                                            fontSize: '11px',
+                                                            fontWeight: 'bold',
+                                                            boxShadow: '0 0 8px ' + getMethodColor(m)
+                                                        }}
+                                                    >
+                                                        {m}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        {selectedNode.statuses && selectedNode.statuses.length > 0 && (
+                                            <div className="tree-detail-section">
+                                                <div className="tree-detail-label">STATUS CODES</div>
+                                                <div className="tree-detail-value" style={{ color: '#00D9FF' }}>
+                                                    {selectedNode.statuses.sort((a,b) => a-b).join(', ')}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="tree-detail-section" style={{ marginTop: '16px' }}>
+                                            <div style={{ fontSize: '10px', color: '#8b92a9', lineHeight: '1.4' }}>
+                                                {selectedNode.pinned ? '📌 Pinned' : '💡 Double-click to pin'}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#00D9FF', textAlign: 'center', gap: '12px' }}>
+                                        <div style={{ fontSize: '11px', lineHeight: '1.6' }}>
+                                            <div style={{ color: '#39FF14', fontWeight: 'bold', marginBottom: '8px' }}>PHYSICS ENGINE</div>
+                                            <div>Nodes repel each other</div>
+                                            <div>Links act like springs</div>
+                                            <div>Collision detection active</div>
+                                            <div style={{ marginTop: '12px', color: '#FFB000' }}>Click a node to inspect</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<Dashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>
+ 
